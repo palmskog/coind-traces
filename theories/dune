@@ -1,0 +1,4 @@
+(coq.theory
+ (name CoindTraces)
+ (package coq-coind-traces)
+ (synopsis "Possibly-infinite traces in Coq"))

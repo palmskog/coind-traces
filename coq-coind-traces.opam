@@ -1,0 +1,26 @@
+opam-version: "2.0"
+maintainer: "palmskog@gmail.com"
+version: "dev"
+
+homepage: "https://github.com/palmskog/coind-traces"
+dev-repo: "git+https://github.com/palmskog/coind-traces.git"
+bug-reports: "https://github.com/palmskog/coind-traces/issues"
+license: "MIT"
+
+synopsis: "Possibly-infinite traces in Coq"
+description: """
+Development in Coq of general possibly-infinite traces and
+properties of such traces."""
+
+build: ["dune" "build" "-p" name "-j" jobs]
+depends: [
+  "dune" {>= "2.5"}
+  "coq" {(>= "8.10" & < "8.13~") | (= "dev")}
+]
+
+tags: [
+  "logpath:CoindTraces"
+]
+authors: [
+  "Karl Palmskog"
+]
