@@ -3,3 +3,4 @@
 theories/SsrExport.v
 theories/Traces.v
 theories/TraceProperties.v
+theories/TraceClassicalProperties.v

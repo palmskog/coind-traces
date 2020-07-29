@@ -76,6 +76,53 @@ exists (fun tr => infinite tr).
 exact: infinite_setoidT.
 Defined.
 
+Lemma trace_infinite_cons : forall a b tr,
+ infinite (Tcons a b tr) -> infinite tr.
+Proof.
+move => a b tr Hinf.
+by inversion Hinf.
+Qed.
+
+Lemma trace_infinite_append :
+ forall tr, infinite tr -> forall tr', infinite (tr' +++ tr).
+Proof.
+cofix CIH.
+move => tr Htr.
+case => [a|a b tr']; first by rewrite trace_append_nil.
+rewrite trace_append_cons.
+apply infinite_delay.
+by apply CIH.
+Qed.
+
+Lemma trace_append_infinite :
+ forall tr, infinite tr -> forall tr', infinite (tr +++ tr').
+Proof.
+cofix CIH.
+case => [a|a b tr0] Hinf; first by inversion Hinf.
+inversion Hinf; subst => tr'.
+rewrite trace_append_cons.
+apply infinite_delay.
+exact: CIH.
+Qed.
+
+Lemma finite_infinite_False : forall tr,
+ finite tr -> infinite tr -> False.
+Proof.
+move => tr; elim => [a Hinf|a b tr' Hfin]; first by inversion Hinf.
+by move => IH Hinf; inversion Hinf.
+Qed.
+
+Lemma not_finite_infinite : forall tr,
+ ~ finite tr -> infinite tr.
+Proof.
+cofix CIH.
+case => [a|a b tr] Hfin; first by case: Hfin; apply finite_nil.
+apply infinite_delay.
+apply CIH => Hinf.
+case: Hfin.
+exact: finite_delay.
+Qed.
+
 Definition satisfy (p:propT) : trace -> Prop := 
 fun tr => let: exist f0 h0 := p in f0 tr.
 
