@@ -567,6 +567,72 @@ inversion h1; subst; clear h1.
 - apply infiniteT_delay. apply (h0 _ _ H). 
 Qed.
 
+CoInductive midpointT (p0 p1: trace -> Prop) (tr0 tr1: trace) (h: followsT (appendT p0 p1) tr0 tr1) : trace -> Prop :=
+| midpointT_nil :
+   forall tr, tr0 = Tnil (hd tr1) -> p0 tr -> followsT p1 tr tr1 -> midpointT h tr
+| midpointT_delay :
+  forall (tr2 tr3 :trace) (h1: followsT (appendT p0 p1) tr2 tr3) (a : A) (b: B) tr',
+  tr0 = Tcons a b tr2 -> tr1 = Tcons a b tr3 -> @midpointT p0 p1 tr2 tr3 h1 tr' ->
+  midpointT h (Tcons a b tr').
+
+Lemma midpointT_before: forall p0 p1 tr0 tr1 (h: followsT (appendT p0 p1) tr0 tr1) tr',
+ midpointT h tr' -> followsT p0 tr0 tr'.
+Proof.
+cofix COINDHYP. dependent inversion h. move => {tr H0}.
+- move: tr1 a tr0 h e a0 H. case.
+  * move => a a0 tr0 h1 h2 h3 h4. simpl in h2.
+    move => tr' hm.
+    invs hm; last by inversion H.
+    destruct h3. destruct H2. inversion h1.
+    subst. apply followsT_nil; last by [].
+    by inversion H1.
+  * move => a b tr0 a0 tr1 h1 h2 h3 h4. simpl in h2.
+    move => tr' hm.
+    invs hm; last by inversion H.
+    destruct h3. destruct H2. inversion h1.
+    subst. apply followsT_nil; last by []. by inversion H1.
+- subst.
+  move => tr0 hm.
+  destruct tr0; first by inversion hm.
+  invs hm; subst; first by inversion H.
+  invs H2; subst.
+  invs H3; subst.
+  apply followsT_delay.
+  exact: (COINDHYP _ _ _ _ h1).
+Qed.
+
+Lemma midpointT_after: forall p0 p1 tr0 tr1 (h: followsT (appendT p0 p1) tr0 tr1) tr',
+ midpointT h tr' -> followsT p1 tr' tr1.
+Proof.
+cofix COINDHYP. dependent inversion h. move => {tr H0}.
+- move: tr1 a tr0 h e a0 H. case.
+  * move => a a0 tr0 h1 h2 h3 h4. simpl in h2. move => tr' hm.
+    invs hm; last by inversion H. destruct tr'; last by inversion H. destruct h3. destruct H2. inversion H3. subst.
+    apply followsT_nil; last by []. by inversion H1.
+  * move => a b tr0 a0 tr1 h1 h2 h3 h4. simpl in h2.
+    move => tr' hm. by invs hm; last by inversion H.
+- subst.
+  move => tr0 hm.
+ destruct tr0; first by inversion hm.
+ invs hm; subst; first by inversion H.
+ invs H2; subst.
+ invs H3; subst.
+ apply followsT_delay.
+ exact: (COINDHYP _ _ _ _ h1).
+Qed.
+
+Definition followsT_dec : forall p tr0 tr1 (h: followsT p tr0 tr1),
+ { tr & { a | tr0 = Tnil a /\ hd tr = a /\ p tr } } +
+ { tr & { tr' & { a & { b | tr0 = Tcons a b tr /\ tr1 = Tcons a b tr' /\ followsT p tr tr'} } } }.
+Proof.
+intros.
+destruct tr0.
+- left; exists tr1; exists a. by inversion h; subst.
+- destruct tr1.
+  * left; exists (Tnil a); exists a. by inversion h; subst.
+  * right; exists tr0; exists tr1; exists a; exists b; by inversion h; subst.
+Defined.
+
 End TraceProperties.
 
 Infix "andT" := AndT (at level 60, right associativity).
