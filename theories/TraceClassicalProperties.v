@@ -30,6 +30,12 @@ right.
 exact: not_finiteT_infiniteT.
 Qed.
 
+Definition finiteT_infiniteT_dec (tr : trace) : { finiteT tr }+{ infiniteT tr } :=
+match excluded_middle_informative (finiteT tr) with
+| left Hfin => left Hfin
+| right Hfin => right (not_finiteT_infiniteT Hfin)
+end.
+
 CoFixpoint midp (p0 p1: trace -> Prop) tr0 tr1 (h: followsT (appendT p0 p1) tr0 tr1) : trace.
 Proof.
 case (followsT_dec h).
