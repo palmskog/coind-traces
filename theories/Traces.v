@@ -37,10 +37,10 @@ Proof. case => //=. Qed.
 
 CoInductive bisim : trace -> trace -> Prop :=
 | bisim_nil : forall a,
-  bisim (Tnil a) (Tnil a)
+   bisim (Tnil a) (Tnil a)
 | bisim_cons : forall a b tr tr',
-  bisim tr tr' ->
-  bisim (Tcons a b tr) (Tcons a b tr').
+   bisim tr tr' ->
+   bisim (Tcons a b tr) (Tcons a b tr').
 
 Lemma bisim_refl : forall tr, bisim tr tr.
 Proof.

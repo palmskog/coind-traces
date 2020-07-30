@@ -43,7 +43,6 @@ end.
 (** ** Finding and using midpoints *)
 
 CoFixpoint midp (p0 p1: trace -> Prop) tr0 tr1 (h: followsT (appendT p0 p1) tr0 tr1) : trace.
-Proof.
 case (followsT_dec h).
 - case => tr; case => st; case => h1; case => h2 h3.
   apply constructive_indefinite_description in h3.

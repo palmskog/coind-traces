@@ -14,7 +14,7 @@ Context {A B : Type}.
 Local Notation trace := (@trace A B).
 
 (**
-We want to reason about [trace] properties that do not distinguish
+We want to reason about trace properties that do not distinguish
 bisimilar traces; these are called _setoid_ properties.
 *)
 
@@ -51,7 +51,7 @@ Proof.
 Defined.
 
 (**
-Pattern for defining Fixpoints using [finiteT].
+Pattern for defining <<Fixpoint>>s using [finiteT].
 *)
 
 Fixpoint id_finiteT (tr : trace) (h : finiteT tr) {struct h} : trace :=
@@ -294,7 +294,7 @@ Qed.
 
 (**
 The [followsT] property holds for two traces when the first is a
-prefix of the second, and p holds for the suffix.
+prefix of the second, and <<p>> holds for the suffix.
 *)
 
 CoInductive followsT (p : trace -> Prop) : trace -> trace -> Prop :=
@@ -401,7 +401,7 @@ Qed.
 
 (**
 The [appendT] property holds for a trace whenever it has
-a prefix for which p1 holds, and p2 holds for the suffix.
+a prefix for which <<p1>> holds, and <<p2>> holds for the suffix.
 *)
 
 Definition appendT (p1 p2: trace -> Prop) : trace -> Prop :=
@@ -613,7 +613,8 @@ Qed.
 (** ** Midpoint property *)
 
 CoInductive midpointT (p0 p1: trace -> Prop) (tr0 tr1: trace) (h: followsT (appendT p0 p1) tr0 tr1) : trace -> Prop :=
-| midpointT_nil : forall tr, tr0 = Tnil (hd tr1) -> p0 tr ->
+| midpointT_nil : forall tr,
+   tr0 = Tnil (hd tr1) -> p0 tr ->
    followsT p1 tr tr1 -> midpointT h tr
 | midpointT_delay : forall tr2 tr3 (h1: followsT (appendT p0 p1) tr2 tr3) (a : A) (b: B) tr',
    tr0 = Tcons a b tr2 -> tr1 = Tcons a b tr3 -> @midpointT p0 p1 tr2 tr3 h1 tr' ->
@@ -686,5 +687,6 @@ Infix "orT" := OrT (at level 60, right associativity).
 Infix "=>>" := propT_imp (at level 60, right associativity).
 Infix "->>" := propA_imp (at level 60, right associativity).
 Infix "andA" := andA (at level 60, right associativity).
+Notation "[| p |]" := (SingletonT p) (at level 80).
 Infix "*+*" := appendT (at level 60, right associativity).
 Infix "***" := AppendT (at level 60, right associativity).
