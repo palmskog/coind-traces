@@ -5,12 +5,16 @@ Set Implicit Arguments.
 Unset Strict Implicit.
 Import Prenex Implicits.
 
+(** * Properties of possibly-infinite traces requiring classical logic *)
+
 Section TraceClassicalProperties.
 
 Context {A B : Type}.
 
 Local Notation trace := (@trace A B).
 Local Notation propT := (@propT A B).
+
+(** ** Relating finiteness and infiniteness *)
 
 Lemma not_infiniteT_finiteT : forall tr : trace,
  ~ infiniteT tr -> finiteT tr.
@@ -35,6 +39,8 @@ match excluded_middle_informative (finiteT tr) with
 | left Hfin => left Hfin
 | right Hfin => right (not_finiteT_infiniteT Hfin)
 end.
+
+(** ** Finding and using midpoints *)
 
 CoFixpoint midp (p0 p1: trace -> Prop) tr0 tr1 (h: followsT (appendT p0 p1) tr0 tr1) : trace.
 Proof.
