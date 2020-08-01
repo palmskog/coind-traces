@@ -44,10 +44,8 @@ invs h0. invs h1.
 exact: (infiniteT_delay a b (CIH _ H _ H4)).
 Qed.
 
-Definition InfiniteT : propT.
-exists (fun tr => infiniteT tr).
-exact: infiniteT_setoidT.
-Defined.
+Definition InfiniteT : propT :=
+exist _ (fun tr => infiniteT tr) infiniteT_setoidT.
 
 Lemma infiniteT_cons : forall a b tr,
  infiniteT (Tcons a b tr) -> infiniteT tr.
@@ -95,11 +93,8 @@ induction 1.
   exact (finiteT_delay a b (IHfiniteT _ H4)).
 Qed.
 
-Definition FiniteT : propT.
-exists (fun tr => finiteT tr).
-move => tr0 h0 tr1 h1.
-exact: (finiteT_setoidT h0 h1).
-Defined.
+Definition FiniteT : propT :=
+exist _ (fun tr => finiteT tr) finiteT_setoidT.
 
 (**
 Equality coincides with bisimilarity for finite traces.
@@ -207,32 +202,44 @@ Qed.
 
 Definition ttT : trace -> Prop := fun tr => True.
 
-Definition TtT : propT.
-exists ttT. by move => tr0 h0 tr1 h1.
-Defined.
+Lemma ttT_setoidT : setoidT ttT.
+Proof. by []. Qed.
+
+Definition TtT : propT :=
+exist _ ttT ttT_setoidT.
 
 Definition satisfyT (p:propT) : trace -> Prop :=
 fun tr => let: exist f0 h0 := p in f0 tr.
 
-Definition AndT (p1 p2 : propT) : propT.
-destruct p1 as [f0 h0].
-destruct p2 as [f1 h1].
-exists (fun tr => f0 tr /\ f1 tr).
-move => tr0 [h2 h3] tr1 h4. split.
+Lemma andT_setoidT : forall f0 f1,
+ setoidT f0 -> setoidT f1 ->
+ setoidT (fun tr => f0 tr /\ f1 tr).
+Proof.
+move => f0 f1 h0 h1 tr0 [h2 h3] tr1 h4. split.
 - exact: (h0 _ h2 _ h4).
 - exact: (h1 _ h3 _ h4).
-Defined.
+Qed.
+
+Definition AndT (p1 p2 : propT) : propT :=
+let: exist f0 h0 := p1 in
+let: exist f1 h1 := p2 in
+exist _ (fun tr => f0 tr /\ f1 tr) (andT_setoidT h0 h1).
 
 Local Infix "andT" := AndT (at level 60, right associativity).
 
-Definition OrT (p1 p2: propT): propT.
-destruct p1 as [f0 h0].
-destruct p2 as [f1 h1].
-exists (fun tr => f0 tr \/ f1 tr).
-move => tr0 [h2 | h2] tr1 h3.
+Lemma orT_setoidT : forall f0 f1,
+ setoidT f0 -> setoidT f1 ->
+ setoidT (fun tr => f0 tr \/ f1 tr).
+Proof.
+move => f0 f1 h0 h1 tr0 [h2 | h2] tr1 h3.
 - left. exact: h0 _ h2 _ h3.
 - right. exact: h1 _ h2 _ h3.
-Defined.
+Qed.
+
+Definition OrT (p1 p2: propT) : propT :=
+let: exist f0 h0 := p1 in
+let: exist f1 h1 := p2 in
+exist _ (fun tr => f0 tr \/ f1 tr) (orT_setoidT h0 h1).
 
 Local Infix "orT" := OrT (at level 60, right associativity).
 
@@ -267,24 +274,24 @@ simpl in h2. simpl. split.
 - by apply h1.
 Qed.
 
-Lemma propT_imp_refl: forall p, p =>> p.
+Lemma propT_imp_refl : forall p, p =>> p.
 Proof. by move => p tr0 h0. Qed.
 
-Lemma satisfyT_cont: forall p0 p1,
+Lemma satisfyT_cont : forall p0 p1,
  p0 =>> p1 -> forall tr, satisfyT p0 tr -> satisfyT p1 tr.
 Proof.
 move => [f0 h0] [f1 h1] h2 tr h3.
 simpl. simpl in h3. exact: h2 _ h3.
 Qed.
 
-Lemma propT_imp_trans: forall p q r, p =>> q -> q =>> r -> p =>> r.
+Lemma propT_imp_trans : forall p q r, p =>> q -> q =>> r -> p =>> r.
 Proof.
 move => p q r h0 h1 tr0 h2.
 apply (satisfyT_cont h1).
 by apply (satisfyT_cont h0 h2).
 Qed.
 
-Lemma OrT_left: forall p1 p2, p1 =>> (p1 orT p2).
+Lemma OrT_left : forall p1 p2, p1 =>> (p1 orT p2).
 Proof.
 move => p1 p2 tr h1. simpl. destruct p1 as [f1 hf1].
 destruct p2 as [f2 hf2]. simpl. simpl in h1. by left.
@@ -337,10 +344,8 @@ Proof. move => u st [st0 [h0 h1]]. by invs h1. Qed.
 Lemma nil_singletonT : forall (u : propA) a, u a -> singletonT u (Tnil a).
 Proof. move => u st h0. exists st. split; [ done | apply bisim_refl]. Qed.
 
-Definition SingletonT (u: propA) : propT.
-exists (singletonT u).
-exact: singletonT_setoidT.
-Defined.
+Definition SingletonT (u: propA) : propT :=
+exist _ (singletonT u) (@singletonT_setoidT u).
 
 Local Notation "[| p |]" := (SingletonT p) (at level 80).
 
@@ -362,12 +367,15 @@ move => u0 u1 b hu tr [a [h0 h1]]. invs h1. invs H1.
 exists a. split; last by apply bisim_refl. exact: hu _ h0.
 Qed.
 
-Definition DupT (u : propA) (b : B) : propT.
-exists (dupT u b).
-move => tr0 [a [h0 h1]] tr1 h2. invs h1. invs H1. invs h2. invs H3.
+Lemma dupT_setoidT : forall u b, setoidT (dupT u b).
+Proof.
+move => u b tr0 [a [h0 h1]] tr1 h2. invs h1. invs H1. invs h2. invs H3.
 exists a; split => //.
 exact: bisim_refl.
-Defined.
+Qed.
+
+Definition DupT (u : propA) (b : B) : propT :=
+exist _ (dupT u b) (@dupT_setoidT u b).
 
 Local Notation "<< p ; b >>" := (DupT p b) (at level 80).
 
@@ -590,12 +598,10 @@ clear hp. move: tr0 tr1 hq hfin. cofix CIH. case.
   apply followsT_delay. exact: (CIH _ _ h0 H3).
 Qed.
 
-Definition AppendT (p1 p2: propT) : propT.
-destruct p1 as [f0 h0].
-destruct p2 as [f1 h1]. exists (appendT f0 f1).
-move => tr0 [tr1 [h2 h3]] tr2 h4. exists tr1.
-split. apply h2. exact: (followsT_setoidT_R h1 h3 h4).
-Defined.
+Definition AppendT (p1 p2: propT) : propT :=
+let: exist f0 h0 := p1 in
+let: exist f1 h1 := p2 in
+exist _ (appendT f0 f1) (appendT_setoidT h1).
 
 Local Infix "***" := AppendT (at level 60, right associativity).
 
@@ -693,9 +699,7 @@ clear hp htr0. move: tr0. cofix hcoind. case.
 Qed.
 
 Lemma TtT_AppendT_idem: (TtT *** TtT) =>> TtT.
-Proof.
-by move => tr _.
-Qed.
+Proof. by []. Qed.
 
 Lemma AppendT_FiniteT_idem : (FiniteT *** FiniteT) =>> FiniteT.
 Proof.
@@ -787,10 +791,9 @@ move => u p b. cofix CIH. move => tr h0 h1. invs h1.
   - invs h1. exact: (followsT_delay _ _ (CIH1 _ _ _ H H4)).
 Qed.
 
-Definition IterT (p : propT) : propT.
-destruct p as [f0 h0]. exists (iterT f0).
-exact: iterT_setoidT.
-Defined.
+Definition IterT (p : propT) : propT :=
+let: exist f0 h0 := p in
+exist _ (iterT f0) (iterT_setoidT h0).
 
 Lemma IterT_cont : forall p q, p =>> q -> (IterT p) =>> (IterT q).
 Proof.
@@ -842,7 +845,7 @@ cofix CIH. move => tr0 tr1 h0 h1. invs h0.
     exact: (followsT_delay _ _ (CIH0 _ _ _ H H4)).
 Qed.
 
-Lemma Iter_unfold_1 : forall p, (IterT p *** p) =>> IterT p.
+Lemma IterT_unfold_1 : forall p, (IterT p *** p) =>> IterT p.
 Proof.
 move => [p hp] tr h0 /=. simpl in h0.
 exact: (iterT_unfold_1 h0).
@@ -929,9 +932,8 @@ move => p0 p1 hp. move => a [tr [h0 h1]].
 exists tr. split. apply: hp _ h0. exact: h1.
 Qed.
 
-Definition LastA (p : propT) : propA.
-destruct p as  [f0 h0]. apply (lastA f0).
-Defined.
+Definition LastA (p : propT) : propA :=
+let: exist f0 h0 := p in lastA f0.
 
 Lemma LastA_cont : forall p q, p =>> q -> LastA p ->> LastA q.
 Proof.
