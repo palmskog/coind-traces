@@ -8,7 +8,7 @@ Import Prenex Implicits.
 (** * Core properties of possibly-infinite traces *)
 
 (**
-The property encodings and many specific properties take inspiration from the paper
+The property encoding and many specific properties take inspiration from the paper
 #<a href="https://arxiv.org/abs/1412.6579">A Hoare logic for the coinductive trace-based
 big-step semantics of While</a>#.
 *)
@@ -28,73 +28,6 @@ Definition setoidT (p : trace -> Prop) :=
 forall tr0, p tr0 -> forall tr1, bisim tr0 tr1 -> p tr1.
 
 Definition propT := { p : trace -> Prop | setoidT p }.
-
-(** ** Finiteness property *)
-
-Inductive finiteT : trace -> Prop :=
-| finiteT_nil : forall a,
-   finiteT (Tnil a)
-| finiteT_delay : forall (a : A) (b : B) tr,
-   finiteT tr ->
-   finiteT (Tcons a b tr).
-
-Lemma finiteT_setoidT : setoidT finiteT.
-Proof.
-induction 1.
-- move => tr0 h0. invs h0. apply finiteT_nil.
-- move => tr0 h0. invs h0.
-  exact (finiteT_delay a b (IHfiniteT _ H4)).
-Qed.
-
-Definition FiniteT : propT.
-exists (fun tr => finiteT tr).
-move => tr0 h0 tr1 h1.
-exact: (finiteT_setoidT h0 h1).
-Defined.
-
-Lemma invert_finiteT_delay (a : A) (b : B) (tr : trace)
- (h : finiteT (Tcons a b tr)) : finiteT tr.
-Proof.
- by inversion h.
-Defined.
-
-(**
-Pattern for defining <<Fixpoint>>s using [finiteT].
-*)
-
-Fixpoint id_finiteT (tr : trace) (h : finiteT tr) {struct h} : trace :=
-match tr as tr' return (finiteT tr' -> trace) with
-| Tnil a => fun _ => Tnil a
-| Tcons a b tr => fun h => id_finiteT (invert_finiteT_delay h)
-end h.
-
-(**
-Pattern for performing inductive proofs using [finiteT].
-*)
-
-Lemma id_finiteT_eq : forall tr (h h':finiteT tr),
- id_finiteT h = id_finiteT h'.
-Proof.
-refine (fix IH tr h {struct h} := _).
-case: tr h => [a|a b tr] h.
-- by dependent inversion h; move => h'; depelim h'; simpl; reflexivity.
-- by dependent inversion h; move => h'; depelim h'; simpl; apply IH.
-Qed.
-
-(**
-Equality coincides with bisimilarity for finite traces.
-*)
-
-Lemma finiteT_bisim_eq : forall tr,
- finiteT tr -> forall tr', bisim tr tr' -> tr = tr'.
-Proof.
-move => tr.
-elim; first by move => a tr' Hbis; inversion Hbis.
-move => a b tr0 Hfin IH tr' Hbis.
-invs Hbis.
-apply IH in H3.
-by rewrite H3.
-Qed.
 
 (** ** Infiniteness property *)
 
@@ -145,6 +78,50 @@ apply infiniteT_delay.
 exact: CIH.
 Qed.
 
+(** ** Finiteness property *)
+
+Inductive finiteT : trace -> Prop :=
+| finiteT_nil : forall a,
+   finiteT (Tnil a)
+| finiteT_delay : forall (a : A) (b : B) tr,
+   finiteT tr ->
+   finiteT (Tcons a b tr).
+
+Lemma finiteT_setoidT : setoidT finiteT.
+Proof.
+induction 1.
+- move => tr0 h0. invs h0. apply finiteT_nil.
+- move => tr0 h0. invs h0.
+  exact (finiteT_delay a b (IHfiniteT _ H4)).
+Qed.
+
+Definition FiniteT : propT.
+exists (fun tr => finiteT tr).
+move => tr0 h0 tr1 h1.
+exact: (finiteT_setoidT h0 h1).
+Defined.
+
+(**
+Equality coincides with bisimilarity for finite traces.
+*)
+
+Lemma finiteT_bisim_eq : forall tr,
+ finiteT tr -> forall tr', bisim tr tr' -> tr = tr'.
+Proof.
+move => tr.
+elim; first by move => a tr' Hbis; inversion Hbis.
+move => a b tr0 Hfin IH tr' Hbis.
+invs Hbis.
+apply IH in H3.
+by rewrite H3.
+Qed.
+
+Lemma invert_finiteT_delay (a : A) (b : B) (tr : trace)
+ (h : finiteT (Tcons a b tr)) : finiteT tr.
+Proof.
+ by inversion h.
+Defined.
+
 (**
 Basic connections between [finiteT] and [infiniteT].
 *)
@@ -165,6 +142,58 @@ apply infiniteT_delay.
 apply CIH => Hinf.
 case: Hfin.
 exact: finiteT_delay.
+Qed.
+
+(** ** Final element property *)
+
+Inductive finalT : trace -> A -> Prop :=
+| finalT_nil : forall a,
+   finalT (Tnil a) a
+| finalT_delay : forall a b a' tr,
+   finalT tr a' ->
+   finalT (Tcons a b tr) a'.
+
+Lemma finalT_finiteT : forall tr a, finalT tr a -> finiteT tr.
+Proof.
+refine (fix IH tr a h {struct h} := _).
+case: tr h; first by move => a' Hfin; exact: finiteT_nil.
+move => a' b tr Hfin; invs Hfin.
+apply finiteT_delay.
+exact: (IH _ _ H3).
+Qed.
+
+(**
+Pattern for defining <<Fixpoint>>s using [finiteT].
+*)
+
+Fixpoint final (tr : trace) (h : finiteT tr) {struct h} : A :=
+match tr as tr' return (finiteT tr' -> A) with
+| Tnil a => fun _ => a
+| Tcons a b tr => fun h => final (invert_finiteT_delay h)
+end h.
+
+(**
+Pattern for performing inductive proofs using [finiteT]
+and [finalT].
+*)
+
+Lemma finiteT_finalT : forall tr (h : finiteT tr),
+ finalT tr (final h).
+Proof.
+refine (fix IH tr h {struct h} := _).
+case: tr h => [a|a b tr] h.
+- by dependent inversion h => /=; apply finalT_nil.
+- by dependent inversion h => /=; apply finalT_delay; apply IH.
+Qed.
+
+Lemma finalT_hd_append_trace : forall tr0 a,
+ finalT tr0 a -> forall tr1, hd tr1 = a ->
+ hd (tr0 +++ tr1) = hd tr0.
+Proof.
+refine (fix IH tr a h {struct h} := _).
+case: tr h => [a0|a0 b tr1] Hfin tr2 Hhd; invs Hfin.
+- by rewrite trace_append_nil.
+- by rewrite trace_append_cons.
 Qed.
 
 (** ** Basic trace properties and connectives *)
@@ -541,6 +570,19 @@ move: tr2 tr0 tr1 h2 h3. cofix CIH. move => tr0 tr1 tr2 h1 h2. invs h2.
 - invs h1. apply followsT_delay. exact: (CIH _ _ _ H4 H).
 Qed.
 
+Lemma appendT_finalT: forall (p q : trace -> Prop) tr0 tr1,
+ p tr0 -> q tr1 -> finalT tr0 (hd tr1) ->
+ (p *+* q) (tr0 +++ tr1).
+Proof.
+move => p q tr0 tr1 hp hq hfin. exists tr0. split => //.
+clear hp. move: tr0 tr1 hq hfin. cofix CIH. case.
+- move => a tr0 hq h1. rewrite trace_append_nil. invs h1.
+  exact: followsT_nil.
+- move => a b tr0 tr1 h0 h1.
+  invs h1. rewrite [Tcons a b tr0 +++ tr1]trace_destr /=.
+  apply followsT_delay. exact: (CIH _ _ h0 H3).
+Qed.
+
 Definition AppendT (p1 p2: propT) : propT.
 destruct p1 as [f0 h0].
 destruct p2 as [f1 h1]. exists (appendT f0 f1).
@@ -578,7 +620,7 @@ have := (@appendT_cont q q p1 p2). apply. done. apply h0.
 exact h1.
 Qed.
 
-Lemma AppendT_ttA: forall p, p =>> (p *** [| ttA |]).
+Lemma AppendT_ttA: forall p, p =>> (p *** [|ttA|]).
 Proof.
 move => [f hp] tr0 h0. simpl in h0. simpl. exists tr0.
 split; first done. clear h0 hp. move: tr0. cofix hcoind.
