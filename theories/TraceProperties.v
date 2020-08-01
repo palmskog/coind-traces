@@ -123,7 +123,7 @@ Proof.
 Defined.
 
 (**
-Basic connections between [finiteT] and [infiniteT].
+Basic connections between finiteness and infiniteness.
 *)
 
 Lemma finiteT_infiniteT_not : forall tr,
@@ -144,16 +144,23 @@ case: Hfin.
 exact: finiteT_delay.
 Qed.
 
-(** ** Final element property *)
+(** ** Final element properties *)
 
-Inductive finalT : trace -> A -> Prop :=
-| finalT_nil : forall a,
-   finalT (Tnil a) a
-| finalT_delay : forall a b a' tr,
-   finalT tr a' ->
-   finalT (Tcons a b tr) a'.
+Inductive finalTA : trace -> A -> Prop :=
+| finalTA_nil : forall a,
+   finalTA (Tnil a) a
+| finalTA_delay : forall a b a' tr,
+   finalTA tr a' ->
+   finalTA (Tcons a b tr) a'.
 
-Lemma finalT_finiteT : forall tr a, finalT tr a -> finiteT tr.
+Inductive finalTB : trace -> B -> Prop :=
+| finalTB_nil : forall a b a',
+   finalTB (Tcons a b (Tnil a')) b
+| finalTB_delay : forall a b b' tr,
+   finalTB tr b' ->
+   finalTB (Tcons a b tr) b'.
+
+Lemma finalTA_finiteT : forall tr a, finalTA tr a -> finiteT tr.
 Proof.
 refine (fix IH tr a h {struct h} := _).
 case: tr h; first by move => a' Hfin; exact: finiteT_nil.
@@ -162,32 +169,32 @@ apply finiteT_delay.
 exact: (IH _ _ H3).
 Qed.
 
-(**
-Pattern for defining <<Fixpoint>>s using [finiteT].
-*)
+Lemma finalTB_finiteT : forall tr b, finalTB tr b -> finiteT tr.
+Proof.
+refine (fix IH tr b h {struct h} := _).
+case: tr h; first by move => a Hfin; invs Hfin.
+move => a b0 tr Hfin; invs Hfin.
+- by apply finiteT_delay; apply finiteT_nil.
+- by apply finiteT_delay; exact: (IH _ _ H3).
+Qed.
 
-Fixpoint final (tr : trace) (h : finiteT tr) {struct h} : A :=
+Fixpoint finalA (tr : trace) (h : finiteT tr) {struct h} : A :=
 match tr as tr' return (finiteT tr' -> A) with
 | Tnil a => fun _ => a
-| Tcons a b tr => fun h => final (invert_finiteT_delay h)
+| Tcons a b tr => fun h => finalA (invert_finiteT_delay h)
 end h.
 
-(**
-Pattern for performing inductive proofs using [finiteT]
-and [finalT].
-*)
-
-Lemma finiteT_finalT : forall tr (h : finiteT tr),
- finalT tr (final h).
+Lemma finiteT_finalTA : forall tr (h : finiteT tr),
+ finalTA tr (finalA h).
 Proof.
 refine (fix IH tr h {struct h} := _).
 case: tr h => [a|a b tr] h.
-- by dependent inversion h => /=; apply finalT_nil.
-- by dependent inversion h => /=; apply finalT_delay; apply IH.
+- by dependent inversion h => /=; apply finalTA_nil.
+- by dependent inversion h => /=; apply finalTA_delay; apply IH.
 Qed.
 
-Lemma finalT_hd_append_trace : forall tr0 a,
- finalT tr0 a -> forall tr1, hd tr1 = a ->
+Lemma finalTA_hd_append_trace : forall tr0 a,
+ finalTA tr0 a -> forall tr1, hd tr1 = a ->
  hd (tr0 +++ tr1) = hd tr0.
 Proof.
 refine (fix IH tr a h {struct h} := _).
@@ -373,7 +380,7 @@ Qed.
 (** ** Follows property *)
 
 (**
-The [followsT] property holds for two traces when the first is a
+The follows property holds for two traces when the first is a
 prefix of the second, and <<p>> holds for the suffix.
 *)
 
@@ -504,7 +511,7 @@ Qed.
 (** ** Append property *)
 
 (**
-The [appendT] property holds for a trace whenever it has
+The append property holds for a trace whenever it has
 a prefix for which <<p1>> holds, and <<p2>> holds for the suffix.
 *)
 
@@ -570,8 +577,8 @@ move: tr2 tr0 tr1 h2 h3. cofix CIH. move => tr0 tr1 tr2 h1 h2. invs h2.
 - invs h1. apply followsT_delay. exact: (CIH _ _ _ H4 H).
 Qed.
 
-Lemma appendT_finalT: forall (p q : trace -> Prop) tr0 tr1,
- p tr0 -> q tr1 -> finalT tr0 (hd tr1) ->
+Lemma appendT_finalTA: forall (p q : trace -> Prop) tr0 tr1,
+ p tr0 -> q tr1 -> finalTA tr0 (hd tr1) ->
  (p *+* q) (tr0 +++ tr1).
 Proof.
 move => p q tr0 tr1 hp hq hfin. exists tr0. split => //.
@@ -727,7 +734,7 @@ inversion h1; subst; clear h1.
 - apply infiniteT_delay. apply (h0 _ _ H).
 Qed.
 
-(** ** Iter property *)
+(** ** Iteration property *)
 
 CoInductive iterT (p : trace -> Prop) : trace -> Prop :=
 | iterT_stop : forall a,
@@ -912,7 +919,7 @@ Qed.
 (** ** Last property *)
 
 Definition lastA (p : trace -> Prop) : propA :=
-fun a => exists tr, p tr /\ finalT tr a.
+fun a => exists tr, p tr /\ finalTA tr a.
 
 Lemma lastA_cont: forall (p q : trace -> Prop),
  (forall tr, p tr -> q tr) ->
@@ -943,7 +950,7 @@ Lemma LastA_SingletonT_unfold : forall u, u ->> LastA ([|u|]).
 Proof.
 move => u a h0. exists (Tnil a). split.
 - by exists a; split => //; apply bisim_nil.
-- exact: finalT_nil.
+- exact: finalTA_nil.
 Qed.
 
 Lemma lastA_appendA : forall p q a, lastA (appendT p q) a -> lastA q a.
@@ -952,9 +959,9 @@ move => p q a [tr0 [h0 h1]].
 move: h0 => [tr [h0 h2]]. clear h0.
 move: tr0 a h1 tr h2. induction 1.
 - move => tr0 h0. invs h0. exists (Tnil a).
-  split => //. exact: finalT_nil.
+  split => //. exact: finalTA_nil.
 - move => tr0 h0. invs h0.
-  * exists (Tcons a b tr). split => //. exact: finalT_delay _ h1.
+  * exists (Tcons a b tr). split => //. exact: finalTA_delay _ h1.
   * exact: IHh1 _ H1.
 Qed.
 
@@ -1030,7 +1037,7 @@ exists (tr2 +++ tr1). split.
   move: tr2 a0 h2 tr1 h0 h1. induction 1.
   * move => tr0 h0 h1. by rewrite trace_append_nil.
   * move => tr0 h0 h1. rewrite trace_append_cons.
-    apply finalT_delay.
+    apply finalTA_delay.
     exact: (IHh2 _ h0 h1).
 Qed.
 
@@ -1041,7 +1048,7 @@ move => u v a [h0 h1]. exists (Tnil a). split.
 - exists (Tnil a). split. exists a. split => //. apply bisim_refl.
   apply followsT_nil => //. exists a. split => //.
   apply bisim_refl.
-- exact: finalT_nil.
+- exact: finalTA_nil.
 Qed.
 
 CoFixpoint lastdup (tr : trace) (b : B) : trace :=
@@ -1068,14 +1075,14 @@ move => u. cofix COINDHYP. move => tr0 b h0. inversion h0.
   exact: (followsT_delay _ _ (COINDHYP _ _ H1)).
 Qed.
 
-Lemma finalT_lastdup : forall tr a b,
- finalT tr a -> finalT (lastdup tr b) a.
+Lemma finalTA_lastdup : forall tr a b,
+ finalTA tr a -> finalTA (lastdup tr b) a.
 Proof.
 induction 1.
 - rewrite [lastdup _ _]trace_destr /=.
-  apply finalT_delay. exact: finalT_nil.
+  apply finalTA_delay. exact: finalTA_nil.
 - rewrite [lastdup _ _]trace_destr /=.
-  exact: finalT_delay.
+  exact: finalTA_delay.
 Qed.
 
 Lemma LastA_DupT : forall p u b,
@@ -1087,7 +1094,7 @@ exists (lastdup tr0 b). split.
   have h4 := followsT_setoidT (@singletonT_setoidT _) h2 h3 (bisim_refl _) => {h2}.
   exists tr0. split. have := hp _ h0 _ h3. done.
   have := followsT_dupT b h4. done.
-- exact: (finalT_lastdup b h1).
+- exact: (finalTA_lastdup b h1).
 Qed.
 
 (** ** Midpoint property *)
