@@ -86,14 +86,14 @@ end.
 
 Local Infix "+++" := trace_append (at level 60, right associativity).
 
-Lemma trace_append_nil: forall a tr, (Tnil a) +++ tr = tr.
+Lemma trace_append_nil : forall a tr, (Tnil a) +++ tr = tr.
 Proof.
 move => a tr.
 rewrite [Tnil a +++ tr]trace_destr.
 by case tr.
 Qed.
 
-Lemma trace_append_cons: forall a b tr tr',
+Lemma trace_append_cons : forall a b tr tr',
  (Tcons a b tr) +++ tr' = Tcons a b (tr +++ tr').
 Proof.
 move => a b tr tr'.
@@ -101,7 +101,7 @@ rewrite [Tcons a b tr +++ tr']trace_destr.
 by case tr.
 Qed.
 
-Lemma trace_eq_append: forall tr1 tr2 tr3 tr4,
+Lemma trace_append_bism : forall tr1 tr2 tr3 tr4,
  bisim tr1 tr2 -> bisim tr3 tr4 -> bisim (tr1 +++ tr3) (tr2 +++ tr4).
 Proof.
 cofix CIH.

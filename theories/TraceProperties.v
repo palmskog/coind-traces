@@ -126,7 +126,7 @@ Defined.
 Basic connections between [finiteT] and [infiniteT].
 *)
 
-Lemma finiteT_infiniteT_False : forall tr,
+Lemma finiteT_infiniteT_not : forall tr,
  finiteT tr -> infiniteT tr -> False.
 Proof.
 move => tr; elim => [a Hinf|a b tr' Hfin]; first by inversion Hinf.
@@ -345,28 +345,28 @@ Qed.
 
 (** ** Duplicate element property *)
 
-Definition dupT (u: propA) : trace -> Prop :=
-fun tr => exists a b, u a /\ bisim tr (Tcons a b (Tnil a)).
+Definition dupT (u : propA) (b : B) : trace -> Prop :=
+fun tr => exists a, u a /\ bisim tr (Tcons a b (Tnil a)).
 
-Lemma dupT_cont: forall (u0 u1: propA),
- u0 ->> u1 -> forall tr, dupT u0 tr -> dupT u1 tr.
+Lemma dupT_cont: forall (u0 u1: propA) b,
+ u0 ->> u1 -> forall tr, dupT u0 b tr -> dupT u1 b tr.
 Proof.
-move => u0 u1 hu tr [a [b [h0 h1]]]. invs h1. invs H1.
-exists a; exists b. split; last by apply bisim_refl. exact: hu _ h0.
+move => u0 u1 b hu tr [a [h0 h1]]. invs h1. invs H1.
+exists a. split; last by apply bisim_refl. exact: hu _ h0.
 Qed.
 
-Definition DupT (u: propA) : propT.
-exists (dupT u).
-move => tr0 [a [b [h0 h1]]] tr1 h2. invs h1. invs H1. invs h2. invs H3.
-exists a; exists b; split => //.
+Definition DupT (u : propA) (b : B) : propT.
+exists (dupT u b).
+move => tr0 [a [h0 h1]] tr1 h2. invs h1. invs H1. invs h2. invs H3.
+exists a; split => //.
 exact: bisim_refl.
 Defined.
 
-Local Notation "<< p >>" := (DupT p) (at level 80).
+Local Notation "<< p ; b >>" := (DupT p b) (at level 80).
 
-Lemma DupT_cont: forall u v, u ->> v -> <<u>> =>> <<v>>.
+Lemma DupT_cont: forall u v b, u ->> v -> <<u;b>> =>> <<v;b>>.
 Proof.
-move => u v h0 tr0 /=.
+move => u v b h0 tr0 /=.
 exact: dupT_cont.
 Qed.
 
@@ -765,17 +765,17 @@ move => tr0 h0. invs h0.
 - exact: (iterT_loop (hp _ H)  (h _ _ H0)).
 Qed.
 
-Lemma iterT_appendT_dupT: forall (u : propA) p tr,
- u (hd tr) -> iterT (appendT p (dupT u)) tr ->
+Lemma iterT_appendT_dupT: forall (u : propA) p b tr,
+ u (hd tr) -> iterT (appendT p (dupT u b)) tr ->
  followsT (singletonT u) tr tr.
 Proof.
-move => u p. cofix CIH. move => tr h0 h1. invs h1.
+move => u p b. cofix CIH. move => tr h0 h1. invs h1.
 - simpl in h0. apply followsT_nil => //. exists a.
   by split => //; apply bisim_refl.
 - move: H => [tr1 [h2 h1]]. clear h2 h0.
   move: tr tr1 tr0 h1 H0. cofix CIH1.
   move => tr0 tr1 tr2 h0 h1. invs h0.
-  * move: H0 => [a [b [h0 h3]]]. invs h3. invs H1.
+  * move: H0 => [a [h0 h3]]. invs h3. invs H1.
     invs h1. invs H3. exact: (followsT_delay _ _ (CIH _ h0 H1)).
   - invs h1. exact: (followsT_delay _ _ (CIH1 _ _ _ H H4)).
 Qed.
@@ -891,6 +891,205 @@ Qed.
 Lemma IterT_IterT : forall p, (IterT p *** IterT p) =>> IterT p.
 Proof. move => [p hp] tr /=. exact: iterT_iterT. Qed.
 
+Lemma IterT_DupT : forall v b,
+ ([|v|] *** (IterT (TtT *** <<v;b>>))) =>> (TtT *** [|v|]).
+Proof.
+move => v b tr0 [tr1 [h0 h1]]. move: h0 => [a [h0 h2]].
+invs h2. invs h1. simpl.
+exists tr0. split => //. move: tr0 h0 H1. cofix CIH.
+move => tr0 h0 h1. invs h1.
+- apply followsT_nil => //. simpl in h0. exists a. split => //.
+  exact: bisim_nil.
+- clear h0. move: H => [tr1 [_ h1]].
+  move: tr1 tr tr0 h1 H0. cofix CIH0.
+  move => tr0 tr1 tr2 h0 h1. invs h0.
+  * move: H0 => [a [h0 h2]]. invs h2.
+    invs H1. invs h1. invs H3.
+    exact: (followsT_delay _ _ (CIH _ h0 H1)).
+  * invs h1. exact: (followsT_delay _ _ (CIH0 _ _ _ H H4)).
+Qed.
+
+(** ** Last property *)
+
+Definition lastA (p : trace -> Prop) : propA :=
+fun a => exists tr, p tr /\ finalT tr a.
+
+Lemma lastA_cont: forall (p q : trace -> Prop),
+ (forall tr, p tr -> q tr) ->
+ lastA p ->> lastA q.
+Proof.
+move => p0 p1 hp. move => a [tr [h0 h1]].
+exists tr. split. apply: hp _ h0. exact: h1.
+Qed.
+
+Definition LastA (p : propT) : propA.
+destruct p as  [f0 h0]. apply (lastA f0).
+Defined.
+
+Lemma LastA_cont : forall p q, p =>> q -> LastA p ->> LastA q.
+Proof.
+destruct p as [f hf]. destruct q as [g hg]. simpl.
+move => h0. apply lastA_cont. apply h0.
+Qed.
+
+Lemma LastA_SingletonT_fold : forall u, LastA ([|u|]) ->> u.
+Proof.
+move => u a h0.
+destruct h0 as [tr0 [h1 h2]]. destruct h1 as [st1 [h1 h3]].
+invs h3. invs h2. exact: h1.
+Qed.
+
+Lemma LastA_SingletonT_unfold : forall u, u ->> LastA ([|u|]).
+Proof.
+move => u a h0. exists (Tnil a). split.
+- by exists a; split => //; apply bisim_nil.
+- exact: finalT_nil.
+Qed.
+
+Lemma lastA_appendA : forall p q a, lastA (appendT p q) a -> lastA q a.
+Proof.
+move => p q a [tr0 [h0 h1]].
+move: h0 => [tr [h0 h2]]. clear h0.
+move: tr0 a h1 tr h2. induction 1.
+- move => tr0 h0. invs h0. exists (Tnil a).
+  split => //. exact: finalT_nil.
+- move => tr0 h0. invs h0.
+  * exists (Tcons a b tr). split => //. exact: finalT_delay _ h1.
+  * exact: IHh1 _ H1.
+Qed.
+
+Lemma LastA_AppendA : forall p v, LastA (p *** [|v|]) ->> v.
+Proof.
+move => [p hp] v. simpl. move => a [tr [[tr' [_ h0]] h1]].
+move: tr a h1 tr' h0. induction 1.
+- move => tr0 h0. invs h0. move: H0 => [a0 [h0 h1]]. by invs h1.
+- move => tr0 h0. invs h0.
+  * move: H0 => [a0 [_ h0]]. invs h0.
+  * exact: IHh1 _ H1.
+Qed.
+
+Lemma LastA_andA : forall p u, ((LastA p) andA u) ->> LastA (p *** [|u|]).
+Proof.
+move => p u a [h0 h1]. destruct p as [p hp]. simpl in h0. simpl.
+destruct h0 as [tr0 [h2 h3]].
+exists tr0. split => //. exists tr0. split => //.
+clear h2. move: tr0 a h3 h1.
+cofix CIH. move => tr0 a h0. invs h0.
+- move => h0. apply followsT_nil => //. exists a.
+  split => //. exact: bisim_refl.
+- move => h0. apply followsT_delay.
+  exact: (CIH _ _ H h0).
+Qed.
+
+Lemma LastA_IterA : forall v b p,
+ LastA ([|v|] *** (IterT (p *** <<v;b>>))) ->> v.
+Proof.
+move => v b p st0 h0.
+have h1: p =>> TtT by [].
+have := LastA_cont (AppendT_cont_R (IterT_cont (AppendT_cont_L h1))) h0. clear h0 h1. move => h0.
+have := LastA_cont (@IterT_DupT v b) h0 => {h0}.
+exact: LastA_AppendA.
+Qed.
+
+Lemma IterT_LastA_DupT : forall v b,
+ (<<v;b>> *** (IterT (TtT *** <<v;b>>))) =>> (TtT *** [|v|]).
+Proof.
+move => v b tr0 [tr1 [h0 h1]].
+move: h0 => [a [h0 h2]]. invs h2.
+invs H1. invs h1. invs H3. simpl.
+exists (Tcons (hd tr') b tr'). split => //.
+apply followsT_delay => //. move: tr' h0 H1.
+cofix CIH.
+move => tr0 h0 h1. invs h1.
+- apply followsT_nil => //. simpl in h0. exists a. split => //.
+  exact: bisim_nil.
+- clear h0. move: H => [tr1 [_ h1]].
+  move: tr1 tr tr0 h1 H0. cofix CIH0.
+  move => tr0 tr1 tr2 h0 h1. invs h0.
+  * move: H0 => [a [h0 h2]]. invs h2.
+    invs H1. invs h1. invs H3.
+    exact: (followsT_delay _ _ (CIH _ h0 H1)).
+  * invs h1. exact: (followsT_delay _ _ (CIH0 _ _ _ H H4)).
+Qed.
+
+Lemma LastA_LastA : forall p q,
+ (LastA ([|LastA p|] *** q)) ->> (LastA (p *** q)).
+Proof.
+move => p q a. destruct p as [p hp]. destruct q as [q hq].
+simpl. move => [tr1 [h0 h1]]. move: h0 => [tr0 [h0 h2]].
+move: h0 => [tr2 [h0 h3]].
+invs h3. invs h2. move: h0 => [tr2 [h0 h2]].
+exists (tr2 +++ tr1). split.
+- exists tr2. split => //. clear h1 h0.
+  move: tr2 h2. cofix CIH. case.
+  * move => a0 h0. rewrite trace_append_nil.
+    apply followsT_nil => //. by invs h0.
+  * move => a0 b tr0 h0. invs h0. rewrite trace_append_cons.
+    apply followsT_delay. exact: (CIH _ H4).
+- clear H1 h0. move h0: (hd tr1) => a0. rewrite h0 in h2.
+  move: tr2 a0 h2 tr1 h0 h1. induction 1.
+  * move => tr0 h0 h1. by rewrite trace_append_nil.
+  * move => tr0 h0 h1. rewrite trace_append_cons.
+    apply finalT_delay.
+    exact: (IHh2 _ h0 h1).
+Qed.
+
+Lemma SingletonT_andA_AppendT : forall u v,
+ (v andA u) ->> LastA ([|v|] *** [|u|]).
+Proof.
+move => u v a [h0 h1]. exists (Tnil a). split.
+- exists (Tnil a). split. exists a. split => //. apply bisim_refl.
+  apply followsT_nil => //. exists a. split => //.
+  apply bisim_refl.
+- exact: finalT_nil.
+Qed.
+
+CoFixpoint lastdup (tr : trace) (b : B) : trace :=
+match tr with
+| Tnil a => Tcons a b (Tnil a)
+| Tcons a b' tr' => Tcons a b' (lastdup tr' b)
+end.
+
+Lemma lastdup_hd: forall tr b, hd tr = hd (lastdup tr b).
+Proof.
+by case => [a b|a b tr b0]; rewrite [lastdup _ _]trace_destr.
+Qed.
+
+Lemma followsT_dupT : forall u tr b,
+ followsT (singletonT u) tr tr ->
+ followsT (dupT u b) tr (lastdup tr b).
+Proof.
+move => u. cofix COINDHYP. move => tr0 b h0. inversion h0.
+- clear H H1 H2 h0. rewrite [lastdup _ _]trace_destr /=.
+  move: H0 => [a0 [h0 h1]]. invs h1.
+  apply followsT_nil => //. exists a0.
+  split => //. exact: bisim_refl.
+- clear h0 H0 H. rewrite [lastdup _ _]trace_destr /=.
+  exact: (followsT_delay _ _ (COINDHYP _ _ H1)).
+Qed.
+
+Lemma finalT_lastdup : forall tr a b,
+ finalT tr a -> finalT (lastdup tr b) a.
+Proof.
+induction 1.
+- rewrite [lastdup _ _]trace_destr /=.
+  apply finalT_delay. exact: finalT_nil.
+- rewrite [lastdup _ _]trace_destr /=.
+  exact: finalT_delay.
+Qed.
+
+Lemma LastA_DupT : forall p u b,
+ LastA (p *** [|u|]) ->> LastA (p *** <<u;b>>).
+Proof.
+move => [p hp] u b a [tr0 [h0 h1]] . move: h0 => [tr1 [h0 h2]].
+exists (lastdup tr0 b). split.
+- have h3 := followsT_singletonT h2.
+  have h4 := followsT_setoidT (@singletonT_setoidT _) h2 h3 (bisim_refl _) => {h2}.
+  exists tr0. split. have := hp _ h0 _ h3. done.
+  have := followsT_dupT b h4. done.
+- exact: (finalT_lastdup b h1).
+Qed.
+
 (** ** Midpoint property *)
 
 (**
@@ -962,4 +1161,4 @@ Infix "andA" := andA (at level 60, right associativity).
 Notation "[| p |]" := (@SingletonT _ _ p) (at level 80).
 Infix "*+*" := appendT (at level 60, right associativity).
 Infix "***" := AppendT (at level 60, right associativity).
-Notation "<< p >>" := (@DupT _ _ p) (at level 80).
+Notation "<< p ; b >>" := (@DupT _ _ p b) (at level 80).
