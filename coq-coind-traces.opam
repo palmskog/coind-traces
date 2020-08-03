@@ -9,8 +9,9 @@ license: "MIT"
 
 synopsis: "Possibly-infinite traces in Coq"
 description: """
-Development in Coq of general possibly-infinite traces and
-properties of such traces."""
+Development in Coq of possibly-infinite traces and properties
+of such traces via coinduction and corecursion, useful
+for capturing labeled transition systems."""
 
 build: ["dune" "build" "-p" name "-j" jobs]
 depends: [
@@ -22,5 +23,7 @@ tags: [
   "logpath:CoindTraces"
 ]
 authors: [
+  "Keiko Nakata"
+  "Tarmo Uustalu"
   "Karl Palmskog"
 ]

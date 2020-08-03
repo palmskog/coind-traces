@@ -3,18 +3,20 @@ fullname: Coinductive Traces
 shortname: coind-traces
 organization: palmskog
 community: false
-actions: true
+action: true
 dune: true
 
 synopsis: Possibly-infinite traces in Coq
 
 description: |-
-  Development in Coq of general possibly-infinite traces and
-  properties of such traces.
+  Development in Coq of possibly-infinite traces and properties
+  of such traces via coinduction and corecursion, useful
+  for capturing labeled transition systems.
 
 authors:
+- name: Keiko Nakata
+- name: Tarmo Uustalu
 - name: Karl Palmskog
-  initial: true
 
 opam-file-maintainer: palmskog@gmail.com
 
@@ -46,7 +48,15 @@ build: |-
  ```
 
 documentation: |-
-  ## Documentation
+  ## Files
 
-  Inspired by the [Coinductive Trace-Based Semantics for While](https://github.com/palmskog/coind-sem-while).
+  - `Traces.v`: definition and decomposition of possibly-infinite traces
+  - `TraceProperties.v`: core trace properties such as finiteness and infiniteness
+  - `TraceClassicalProperties.v`: trace properties that require classical logic
+
+  Many definitions and properties are adapted from the
+  [Coinductive Trace-Based Semantics for While][coind-sem-url]
+  by Nakata and Uustalu.
+
+  [coind-sem-url]: https://github.com/palmskog/coind-sem-while
 ---
