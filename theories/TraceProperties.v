@@ -7,11 +7,8 @@ Import Prenex Implicits.
 
 (** * Core properties of possibly-infinite traces *)
 
-(**
-The property encoding and many specific properties take inspiration from the paper
-#<a href="https://arxiv.org/abs/1412.6579">A Hoare logic for the coinductive trace-based
-big-step semantics of While</a>#.
-*)
+(** The property encoding and many specific properties take inspiration from the paper
+#<a href="https://arxiv.org/abs/1412.6579">A Hoare logic for the coinductive trace-based big-step semantics of While</a>#. *)
 
 Section TraceProperties.
 
@@ -19,10 +16,8 @@ Context {A B : Type}.
 
 Local Notation trace := (@trace A B).
 
-(**
-We want to reason about trace properties that do not distinguish
-bisimilar traces; these are called _setoid_ properties.
-*)
+(** We want to reason about trace properties that do not distinguish
+bisimilar traces; these are called _setoid_ properties. *)
 
 Definition setoidT (p : trace -> Prop) :=
 forall tr0, p tr0 -> forall tr1, bisim tr0 tr1 -> p tr1.
@@ -96,9 +91,11 @@ Qed.
 Definition FiniteT : propT :=
 exist _ (fun tr => finiteT tr) finiteT_setoidT.
 
-(**
-Equality coincides with bisimilarity for finite traces.
-*)
+Lemma invert_finiteT_delay (a : A) (b : B) (tr : trace)
+ (h : finiteT (Tcons a b tr)) : finiteT tr.
+Proof. by inversion h. Defined.
+
+(** Equality coincides with bisimilarity for finite traces. *)
 
 Lemma finiteT_bisim_eq : forall tr,
  finiteT tr -> forall tr', bisim tr tr' -> tr = tr'.
@@ -111,15 +108,7 @@ apply IH in H3.
 by rewrite H3.
 Qed.
 
-Lemma invert_finiteT_delay (a : A) (b : B) (tr : trace)
- (h : finiteT (Tcons a b tr)) : finiteT tr.
-Proof.
- by inversion h.
-Defined.
-
-(**
-Basic connections between finiteness and infiniteness.
-*)
+(** Basic connections between finiteness and infiniteness. *)
 
 Lemma finiteT_infiniteT_not : forall tr,
  finiteT tr -> infiniteT tr -> False.
@@ -208,8 +197,36 @@ Proof. by []. Qed.
 Definition TtT : propT :=
 exist _ ttT ttT_setoidT.
 
-Definition satisfyT (p:propT) : trace -> Prop :=
+Definition ffT : trace -> Prop := fun tr => False.
+
+Lemma ffT_setoidT : setoidT ffT.
+Proof. by []. Qed.
+
+Definition FfT : propT :=
+exist _ ffT ffT_setoidT.
+
+Definition notT (p : trace -> Prop) : trace -> Prop := fun tr => ~ p tr.
+
+Lemma notT_setoidT : forall p, setoidT p -> setoidT (notT p).
+Proof.
+move => p hp tr h1 tr' h2 h3.
+have := hp _ h3 _ (bisim_sym h2).
+exact: h1.
+Qed.
+
+Definition NotT (p : propT) : propT :=
+let: exist f hf := p in
+exist _ (notT f) (notT_setoidT hf).
+
+Definition satisfyT (p : propT) : trace -> Prop :=
 fun tr => let: exist f0 h0 := p in f0 tr.
+
+Program Definition ExT {T: Type} (p: T -> propT) : propT :=
+exist _ (fun tr => exists x, satisfyT (p x) tr) _.
+Next Obligation.
+move => tr0 [x h0] tr1 h1. exists x. destruct (p x) as [f0 h2].
+simpl. simpl in h0. exact: h2 _ h0 _ h1.
+Defined.
 
 Lemma andT_setoidT : forall f0 f1,
  setoidT f0 -> setoidT f1 ->
@@ -319,6 +336,9 @@ Definition andA (u1 u2: propA) : propA := fun a => u1 a /\ u2 a.
 
 Local Infix "andA" := andA (at level 60, right associativity).
 
+Definition exA {T : Type} (u: T -> propA) : propA :=
+fun st => exists x, u x st.
+
 (** ** Singleton property *)
 
 Definition singletonT (u : propA) : trace -> Prop :=
@@ -387,10 +407,8 @@ Qed.
 
 (** ** Follows property *)
 
-(**
-The follows property holds for two traces when the first is a
-prefix of the second, and <<p>> holds for the suffix.
-*)
+(** The follows property holds for two traces when the first is a
+prefix of the second, and [p] holds for the suffix. *)
 
 CoInductive followsT (p : trace -> Prop) : trace -> trace -> Prop :=
 | followsT_nil : forall a tr,
@@ -518,10 +536,8 @@ Qed.
 
 (** ** Append property *)
 
-(**
-The append property holds for a trace whenever it has
-a prefix for which <<p1>> holds, and <<p2>> holds for the suffix.
-*)
+(** The append property holds for a trace whenever it has
+a prefix for which [p1] holds, and [p2] holds for the suffix. *)
 
 Definition appendT (p1 p2: trace -> Prop) : trace -> Prop :=
 fun tr => exists tr', p1 tr' /\ followsT p2 tr' tr.
@@ -1101,17 +1117,19 @@ Qed.
 
 (** ** Midpoint property *)
 
-(**
-This property identifies a trace that is both a suffix of <<tr0>> and a prefix of <<tr1>>,
-and is the stepping stone to showing the right associativity of the append property.
-*)
+(** This property identifies a trace that is both a suffix of [tr0] and a prefix of [tr1],
+and is the stepping stone to showing the right associativity of the append property. *)
 
 CoInductive midpointT (p0 p1: trace -> Prop) (tr0 tr1: trace) (h: followsT (appendT p0 p1) tr0 tr1) : trace -> Prop :=
 | midpointT_nil : forall tr,
-   tr0 = Tnil (hd tr1) -> p0 tr ->
-   followsT p1 tr tr1 -> midpointT h tr
+   tr0 = Tnil (hd tr1) ->
+   p0 tr ->
+   followsT p1 tr tr1 ->
+   midpointT h tr
 | midpointT_delay : forall tr2 tr3 (h1: followsT (appendT p0 p1) tr2 tr3) (a : A) (b: B) tr',
-   tr0 = Tcons a b tr2 -> tr1 = Tcons a b tr3 -> @midpointT p0 p1 tr2 tr3 h1 tr' ->
+   tr0 = Tcons a b tr2 ->
+   tr1 = Tcons a b tr3 ->
+   @midpointT p0 p1 tr2 tr3 h1 tr' ->
    midpointT h (Tcons a b tr').
 
 Lemma midpointT_before: forall p0 p1 tr0 tr1 (h: followsT (appendT p0 p1) tr0 tr1) tr',
@@ -1152,15 +1170,17 @@ cofix COINDHYP. dependent inversion h. move => {tr H0}.
     move => tr' hm. by invs hm; last by inversion H.
 - subst.
   move => tr0 hm.
- destruct tr0; first by inversion hm.
- invs hm; subst; first by inversion H.
- invs H2; subst.
- invs H3; subst.
- apply followsT_delay.
- exact: (COINDHYP _ _ _ _ h1).
+  destruct tr0; first by inversion hm.
+  invs hm; subst; first by inversion H.
+  invs H2; subst.
+  invs H3; subst.
+  apply followsT_delay.
+  exact: (COINDHYP _ _ _ _ h1).
 Qed.
 
 End TraceProperties.
+
+(** ** Trace property operators and notations *)
 
 Infix "andT" := AndT (at level 60, right associativity).
 Infix "orT" := OrT (at level 60, right associativity).

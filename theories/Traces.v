@@ -14,12 +14,10 @@ Context {A B : Type}.
 
 (** ** Core trace definition and decomposition *)
 
-(**
-This definition is similar to that for lazy lists from Chapter 13
+(** This definition is similar to that for lazy lists from Chapter 13
 of the #<a href="https://github.com/coq-community/coq-art">Coq'Art book</a>#.
 However, to support traces following labeled transition relations, constructors
-have additional elements.
-*)
+have additional elements. *)
 
 CoInductive trace : Type :=
 | Tnil : A -> trace
